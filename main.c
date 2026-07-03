@@ -14,6 +14,7 @@ int line_counter = 0;
 
 bool load(char *, char **);
 int command_input(PANEL *);
+void print_main(PANEL *);
 
 int main(int argc, char *argv[]){
 
@@ -49,6 +50,12 @@ int main(int argc, char *argv[]){
 	PANEL *cmd_p = new_panel(cmd);
 
 	hide_panel(cmd_p);
+
+	int cur_y, cur_x;
+
+	if(file_loaded){
+		print_main(main_p);
+	}
 	while (1) {
 		int ch = wgetch(main);
 		if(ch == ':'){
@@ -57,7 +64,29 @@ int main(int argc, char *argv[]){
 			if(res < 0){
 				break;
 			}
+			hide_panel(cmd_p);
 		}
+		if(ch == 'i'){
+			// implement insert mode function
+		}
+		getyx(main, cur_y, cur_x);
+		switch (ch) {
+			case 'j':
+				cur_y++;
+				break;
+			case 'h':
+				if(cur_x > 0) cur_x--;
+				break;
+			case 'k':
+				if(cur_y > 0) cur_y--;
+				break;
+			case 'l':
+				cur_x++;
+				break;
+		}
+		move(cur_y, cur_x);
+		update_panels();
+		doupdate();
 	}
 
 
@@ -66,22 +95,33 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
+void print_main(PANEL *man_p){
+	WINDOW *main = panel_window(man_p);
+	wmove(main, 0, 0);
+	for(int i = 0; i < line_counter; i++){
+		wprintw(main, "%s", filebuf[i]);
+	}
+
+}
+
 int command_input(PANEL *cmd_p){
 	show_panel(cmd_p);
 	WINDOW *cmd = panel_window(cmd_p);
 	mvwaddch(cmd, 0, 1, ':');
 	update_panels();
 	doupdate();
+	int ch, prev;
 	while (1) {
-		int ch = wgetch(cmd);
+		ch = wgetch(cmd);
 		waddch(cmd, ch);
 		update_panels();
 		doupdate();
 		if(ch == 'q'){
 			return -1;
 		}
+		
 	}
-
+	return 0;
 }
 
 bool load(char *file_name, char **store_cur){
