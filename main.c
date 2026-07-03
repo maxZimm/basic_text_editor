@@ -14,7 +14,9 @@ int line_counter = 0;
 
 bool load(char *, char **);
 int command_input(PANEL *);
+void insert_input(PANEL *, char **);
 void print_main(PANEL *);
+void p_refresh(void);
 
 int main(int argc, char *argv[]){
 
@@ -42,9 +44,11 @@ int main(int argc, char *argv[]){
 	}
 	refresh();
 	WINDOW *main = newwin(LINES - 1, COLS, 0, 0);
-	WINDOW *cmd = newwin(1 , COLS, LINES - 1, 1);
+	WINDOW *cmd = newwin(1 , COLS, LINES - 1, 0);
 	wbkgd(main, COLOR_PAIR(1));
 	wbkgd(cmd, COLOR_PAIR(2));
+	keypad(main, TRUE);
+	keypad(cmd, TRUE);
 
 	PANEL *main_p = new_panel(main);
 	PANEL *cmd_p = new_panel(cmd);
@@ -68,6 +72,7 @@ int main(int argc, char *argv[]){
 		}
 		if(ch == 'i'){
 			// implement insert mode function
+			insert_input(main_p, &store_cur);
 		}
 		getyx(main, cur_y, cur_x);
 		switch (ch) {
@@ -84,9 +89,8 @@ int main(int argc, char *argv[]){
 				cur_x++;
 				break;
 		}
-		move(cur_y, cur_x);
-		update_panels();
-		doupdate();
+		wmove(main, cur_y, cur_x);
+		p_refresh();
 	}
 
 
@@ -97,6 +101,7 @@ int main(int argc, char *argv[]){
 
 void print_main(PANEL *man_p){
 	WINDOW *main = panel_window(man_p);
+	wclear(main);
 	wmove(main, 0, 0);
 	for(int i = 0; i < line_counter; i++){
 		wprintw(main, "%s", filebuf[i]);
@@ -107,23 +112,75 @@ void print_main(PANEL *man_p){
 int command_input(PANEL *cmd_p){
 	show_panel(cmd_p);
 	WINDOW *cmd = panel_window(cmd_p);
+	wclear(cmd);
 	mvwaddch(cmd, 0, 1, ':');
-	update_panels();
-	doupdate();
+	p_refresh();
+
 	int ch, prev;
 	while (1) {
 		ch = wgetch(cmd);
-		waddch(cmd, ch);
-		update_panels();
-		doupdate();
-		if(ch == 'q'){
-			return -1;
+		if(ch == KEY_BACKSPACE || ch == '\b'){
+			int cur_y, cur_x;
+			getyx(cmd, cur_y, cur_x);
+			mvwaddch(cmd, cur_y, cur_x - 1, ' ');
+			wmove(cmd, cur_y, cur_x - 1);
+			p_refresh();
+			continue;
 		}
+		waddch(cmd, ch);
+		p_refresh();
+		if(ch == '\n'){
+			if(prev == 'q')
+				return -1;
+			else
+				return 0;
+		}
+		prev = ch;
+
 		
 	}
 	return 0;
 }
 
+void insert_input(PANEL *main_p, char **store_cur){
+	WINDOW *main = panel_window(main_p);
+	int cur_y, cur_x, ch, i, esc;
+	char line_buf[LINELEN];
+	i = esc = 0;
+	while (1) {
+		ch = wgetch(main);
+		if(ch == 27){
+			esc = 1;		
+			break;
+		}
+		if(ch == KEY_BACKSPACE || ch == '\b'){
+			if(i > 0){
+				i--;
+				getyx(main, cur_y, cur_x);
+				mvwaddch(main, cur_y, cur_x - 1, ' ');
+				wmove(main, cur_y, cur_x - 1);
+				p_refresh();
+			}
+			continue;
+		}
+		if(ch > 255){
+			continue;
+		}
+		else {
+			line_buf[i++] = ch;
+			waddch(main, ch);
+			p_refresh();
+		}
+		if(ch == '\n'){
+			strcpy(*store_cur, line_buf);
+			filebuf[line_counter++] = *store_cur;
+			(*store_cur)+= LINELEN;
+			i = 0;
+			continue;
+		}
+	}
+	
+}
 bool load(char *file_name, char **store_cur){
 
 	FILE *fp = fopen(file_name, "r");
@@ -139,4 +196,9 @@ bool load(char *file_name, char **store_cur){
 	}
 	fclose(fp);
 	return true;
+}
+
+void p_refresh(void){
+	update_panels();
+	doupdate();
 }
