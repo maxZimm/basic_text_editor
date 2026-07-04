@@ -76,6 +76,13 @@ int main(int argc, char *argv[]){
 		if(ch == 'i'){
 			// implement insert mode function
 			insert_input(main_p, &store_cur);
+			print_main(main_p);
+		}
+		if(ch == 'e'){
+			int cur_y, cur_x;
+			getyx(main, cur_y, cur_x);
+			edit_input(main_p, cur_y, cur_x, &store_cur);
+			print_main(main_p);
 		}
 		getyx(main, cur_y, cur_x);
 		switch (ch) {
@@ -120,7 +127,6 @@ void print_main(PANEL *man_p){
 	for(int i = 0; i < line_counter; i++){
 		wprintw(main, "%s", filebuf[i]);
 	}
-
 }
 
 int command_input(PANEL *cmd_p){
@@ -161,6 +167,7 @@ void insert_input(PANEL *main_p, char **store_cur){
 	int cur_y, cur_x, ch, i, esc;
 	char line_buf[LINELEN];
 	i = esc = 0;
+	wmove(main, line_counter, 0);
 	while (1) {
 		ch = wgetch(main);
 		if(ch == 27){
@@ -270,4 +277,37 @@ void get_file_name(PANEL *cmd_p, char *buff){
 		p_refresh();
 		
 	}
+}
+
+void edit_input(PANEL *pan, int cur_y, int cur_x, char **store_cur){
+	WINDOW *win = panel_window(pan);
+
+	char line_buf[LINELEN];
+	char tail[LINELEN - cur_x];
+	// Determine if cur_y is already in filebuf
+	if(cur_y < line_counter){
+		strcpy(line_buf, filebuf[cur_y]);
+		int i, j;
+		for(j = cur_x, i = 0 ; line_buf[j] != '\0'; j++, i++ ){
+			tail[i] = line_buf[j];
+		}
+		tail[i] = '\0';
+	}
+	// now what? 
+	int add_ch, esc;
+	esc = 0;
+	while (1) {
+		add_ch = wgetch(win);
+		if(add_ch == 27 || add_ch == '\n'){
+			break;
+		}
+		mvwaddch(win, cur_y, cur_x, add_ch);
+		line_buf[cur_x++] = add_ch;
+	}
+	for(int i = 0; tail[i] != '\0'; i++){
+		line_buf[cur_x++] = tail[i];
+	}
+	line_buf[cur_x] = '\0';
+	strcpy(filebuf[cur_y], line_buf);
+	return;
 }
