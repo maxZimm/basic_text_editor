@@ -16,9 +16,10 @@ bool load(char *, char **);
 bool save_file(char *);
 int command_input(PANEL *);
 void insert_input(PANEL *, char **);
+void edit_input(PANEL *, int, int, char **);
 void print_main(PANEL *);
 void p_refresh(void);
-char *get_file_name(PANEL *, char *);
+void get_file_name(PANEL *, char *);
 
 int main(int argc, char *argv[]){
 
@@ -176,15 +177,14 @@ void insert_input(PANEL *main_p, char **store_cur){
 			}
 			continue;
 		}
-		if(ch > 255){
-			continue;
-		}
-		else {
-			line_buf[i++] = ch;
-			waddch(main, ch);
-			p_refresh();
-		}
+		// if(ch > 255){
+		// 	continue;
+		// }
+		line_buf[i++] = ch;
+		waddch(main, ch);
+		p_refresh();
 		if(ch == '\n'){
+			line_buf[i] = '\0';
 			strcpy(*store_cur, line_buf);
 			filebuf[line_counter++] = *store_cur;
 			(*store_cur)+= LINELEN;
@@ -239,7 +239,7 @@ void p_refresh(void){
 	doupdate();
 }
 
-char *get_file_name(PANEL *cmd_p, char *buff){
+void get_file_name(PANEL *cmd_p, char *buff){
 	WINDOW *cmd = panel_window(cmd_p);
 
 	wclear(cmd);
@@ -270,6 +270,4 @@ char *get_file_name(PANEL *cmd_p, char *buff){
 		p_refresh();
 		
 	}
-	return buff;
-
 }
