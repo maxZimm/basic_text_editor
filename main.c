@@ -13,10 +13,12 @@ char *filebuf[NUMLINES];
 int line_counter = 0;
 
 bool load(char *, char **);
+bool save_file(char *);
 int command_input(PANEL *);
 void insert_input(PANEL *, char **);
 void print_main(PANEL *);
 void p_refresh(void);
+char *get_file_name(PANEL *, char *);
 
 int main(int argc, char *argv[]){
 
@@ -93,9 +95,20 @@ int main(int argc, char *argv[]){
 		p_refresh();
 	}
 
+	char save_name[256];
+	if(!file_loaded){
+		// get a string 
+		get_file_name(cmd_p, save_name);
+	}
 
-	free(store);
 	endwin();
+	if(!file_loaded){
+		save_file(save_name);
+	}
+	else{
+		save_file(file_name);
+	}
+	free(store);
 	return 0;
 }
 
@@ -179,8 +192,16 @@ void insert_input(PANEL *main_p, char **store_cur){
 			continue;
 		}
 	}
+	if(esc && i > 0){
+		line_buf[i++] = '\n';
+		line_buf[i] = '\0';
+		strcpy(*store_cur, line_buf);
+		filebuf[line_counter++] = *store_cur;
+		(*store_cur)+= LINELEN;
+	}
 	
 }
+
 bool load(char *file_name, char **store_cur){
 
 	FILE *fp = fopen(file_name, "r");
@@ -198,7 +219,57 @@ bool load(char *file_name, char **store_cur){
 	return true;
 }
 
+bool save_file(char *file_name){
+	FILE *fp;
+	fp = fopen(file_name, "w");
+	if(fp == NULL){
+		printf("ERROR in saving %s\n", file_name);
+		return false;
+	}
+	int i = 0;
+	while (i < line_counter) {
+		fputs(filebuf[i++], fp);
+	}
+	fclose(fp);
+	return true;
+}
+
 void p_refresh(void){
 	update_panels();
 	doupdate();
+}
+
+char *get_file_name(PANEL *cmd_p, char *buff){
+	WINDOW *cmd = panel_window(cmd_p);
+
+	wclear(cmd);
+	waddstr(cmd, ": add file name");
+	p_refresh();
+	wmove(cmd, 0, 2);
+	int ch, i;
+	i = 0;
+	while (i < 256) {
+		ch = wgetch(cmd);
+		if(ch == KEY_BACKSPACE || ch == '\b'){
+			int cur_y, cur_x;
+			getyx(cmd, cur_y, cur_x);
+			mvwaddch(cmd, cur_y, cur_x - 1, ' ');
+			wmove(cmd, cur_y, cur_x - 1);
+			p_refresh();
+			continue;
+		}
+		if(ch > 255){
+			continue;
+		}
+		if(ch == '\n'){
+			buff[i] = '\0';
+			break;
+		}
+		waddch(cmd, ch);
+		buff[i++] =  ch;
+		p_refresh();
+		
+	}
+	return buff;
+
 }
