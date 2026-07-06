@@ -44,7 +44,7 @@ int main(int argc, char *argv[]){
 	if(has_colors()){
 		start_color();
 		init_pair(1, COLOR_GREEN, COLOR_BLACK);
-		init_pair(2, COLOR_RED, COLOR_BLACK);
+		init_pair(2, COLOR_CYAN, COLOR_BLACK);
 	}
 	refresh();
 	WINDOW *main = newwin(LINES - 1, COLS, 0, 0);
@@ -282,7 +282,6 @@ int collect_text(WINDOW *win, char *lin_buf){
 			getyx(win, cur_y, cur_x);
 			mvwaddch(win, cur_y, cur_x - 1, ' ');
 			wmove(win, cur_y, cur_x - 1);
-			last_cur = i; // wrong way to handle if we moved back arrow to delete
 			continue;
 		}
 		if(ch > 255){
@@ -319,22 +318,16 @@ int collect_text(WINDOW *win, char *lin_buf){
 			ch_1 = lin_buf[i]; // previously entered ch at insertion point
 			ch_2 = lin_buf[i + 1]; // char after that one that ch_1 will replace
 			lin_buf[i++] = ch; // insert collected char and vance index, i is at ch_2
-			//getyx(win, cur_y, cur_x);
-			move(cur_y, i);
 			mvwinsch(win, cur_y, i - 1, ch);
 			offset = i;// offset equals insertion point of next char which should equal ch_2
-			wclrtoeol(win);
 			while(ch_1 != '\0' && offset < LINELEN){
 				lin_buf[offset] = ch_1;// insert ch_1 to next spot and advance offset, which means offset points
 				// to 1 past ch_2?
-				waddch(win, ch_1);
 				ch_1 = ch_2;// put ch_2 into ch_1 for next insert
 				ch_2 = lin_buf[++offset];// assign ch_2 
 			}
 			lin_buf[offset] = ch_1;
 			last_cur = offset;
-			// insert ch for display
-			//mvwaddch(win, cur_y, cur_x, ch);
 		}
 		else if(i > last_cur){
 			// fill line_buf at indexes between last_cur and i with ' '
