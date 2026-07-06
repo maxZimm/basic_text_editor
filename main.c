@@ -20,6 +20,7 @@ void edit_input(PANEL *, int, int, char **);
 void print_main(PANEL *);
 void p_refresh(void);
 void get_file_name(PANEL *, char *);
+int collect_text(WINDOW *, char *);
 
 int main(int argc, char *argv[]){
 
@@ -158,48 +159,22 @@ int command_input(PANEL *cmd_p){
 
 void insert_input(PANEL *main_p, char **store_cur){
 	WINDOW *main = panel_window(main_p);
-	int cur_y, cur_x, ch, i, esc;
+	int cur_y, cur_x, esc;
+	//int , ch, i;
 	char line_buf[LINELEN];
-	i = esc = 0;
-	while (1) {
-		ch = wgetch(main);
-		if(ch == 27){
-			esc = 1;		
-			break;
-		}
-		if(ch == KEY_BACKSPACE || ch == '\b'){
-			if(i > 0){
-				i--;
-				getyx(main, cur_y, cur_x);
-				mvwaddch(main, cur_y, cur_x - 1, ' ');
-				wmove(main, cur_y, cur_x - 1);
-				p_refresh();
-			}
-			continue;
-		}
-		// if(ch > 255){
-		// 	continue;
-		// }
-		line_buf[i++] = ch;
-		waddch(main, ch);
-		p_refresh();
-		if(ch == '\n'){
-			line_buf[i] = '\0';
-			strcpy(*store_cur, line_buf);
-			filebuf[line_counter++] = *store_cur;
-			(*store_cur)+= LINELEN;
-			i = 0;
-			continue;
-		}
-	}
-	if(esc && i > 0){
-		line_buf[i++] = '\n';
-		line_buf[i] = '\0';
+	//i =
+	esc = 0;
+	getyx(main, cur_y, cur_x);
+	cur_x = 0;
+	wmove(main, cur_y, cur_x);
+	while (esc < 1) {
+		esc = collect_text(main, line_buf);
+		if(esc < 2){
 		strcpy(*store_cur, line_buf);
 		filebuf[line_counter++] = *store_cur;
 		(*store_cur)+= LINELEN;
+		}
 	}
-	
 }
 
 bool load(char *file_name, char **store_cur){
@@ -270,4 +245,110 @@ void get_file_name(PANEL *cmd_p, char *buff){
 		p_refresh();
 		
 	}
+}
+
+int collect_text(WINDOW *win, char *lin_buf){
+	// Idea to create a cursor for last entered text index
+	// if arrows are used to move ahead or behind the current index that
+	// original spot from before the arrows needs to be recorded
+	int ch, cur_y, cur_x, i, esc;
+	getyx(win, cur_y, cur_x);
+	i = esc = 0;
+	int last_cur = 0; // should always be the index after the furthest most right char in line buf
+	while (i < LINELEN && last_cur < LINELEN) {
+		ch = wgetch(win);
+		// Characters not selected to store
+		if(ch == 27){
+			esc = 1;
+			// maybe edit linbuf here
+			if(i > 0 && i == last_cur){
+				lin_buf[i++] = '\n';
+				lin_buf[i] = '\0';
+			}
+			else if(i < last_cur){
+				while (lin_buf[i++] != '\0')
+					;
+				lin_buf[i - 1] = '\n';
+				lin_buf[i] = '\0';
+				break;
+			}
+			else{
+				esc = 2;
+			}
+			break;
+		}
+		if(ch == KEY_BACKSPACE || ch == '\b'){
+			if(i > 0) --i;
+			getyx(win, cur_y, cur_x);
+			mvwaddch(win, cur_y, cur_x - 1, ' ');
+			wmove(win, cur_y, cur_x - 1);
+			last_cur = i; // wrong way to handle if we moved back arrow to delete
+			continue;
+		}
+		if(ch > 255){
+			switch (ch) {
+				case KEY_UP:
+				case KEY_LEFT:
+					lin_buf[last_cur] = '\0';
+					if(i > 0){
+						--i;
+					} 
+					getyx(win, cur_y, cur_x);
+					wmove(win, cur_y, cur_x - 1);
+					break;
+				case KEY_DOWN:
+				case KEY_RIGHT:
+					if(i < LINELEN){
+						++i;
+					} 
+					getyx(win, cur_y, cur_x);
+					wmove(win, cur_y, cur_x + 1);
+					break;
+			}
+			continue;
+		}
+		// Add chars to lin_buf
+		if(last_cur == 0 || i == last_cur){
+			lin_buf[i++] = ch;
+			waddch(win, ch);
+			last_cur = i; // now last_cur is at one ahead of last char entered
+		}
+		else if(i < last_cur){
+			// grab char between 
+			int ch_1, ch_2, offset;
+			ch_1 = lin_buf[i]; // previously entered ch at insertion point
+			ch_2 = lin_buf[i + 1]; // char after that one that ch_1 will replace
+			lin_buf[i++] = ch; // insert collected char and vance index, i is at ch_2
+			//getyx(win, cur_y, cur_x);
+			move(cur_y, i);
+			mvwinsch(win, cur_y, i - 1, ch);
+			offset = i;// offset equals insertion point of next char which should equal ch_2
+			wclrtoeol(win);
+			while(ch_1 != '\0' && offset < LINELEN){
+				lin_buf[offset] = ch_1;// insert ch_1 to next spot and advance offset, which means offset points
+				// to 1 past ch_2?
+				waddch(win, ch_1);
+				ch_1 = ch_2;// put ch_2 into ch_1 for next insert
+				ch_2 = lin_buf[++offset];// assign ch_2 
+			}
+			lin_buf[offset] = ch_1;
+			last_cur = offset;
+			// insert ch for display
+			//mvwaddch(win, cur_y, cur_x, ch);
+		}
+		else if(i > last_cur){
+			// fill line_buf at indexes between last_cur and i with ' '
+			for(int j = last_cur; j < i; j++){
+				lin_buf[j] = ' ';
+			}
+			lin_buf[i++] = ch;
+			waddch(win, ch);
+			last_cur = i;
+		}
+		if(ch == '\n'){
+			lin_buf[i] = '\0';
+			break;
+		}
+	}
+	return esc;
 }
