@@ -282,9 +282,9 @@ int collect_text(WINDOW *win, char *lin_buf){
 				--last_cur;
 				--i;
 				getyx(win, cur_y, cur_x);
-				mvwaddch(win, cur_y, cur_x - 1, ' ');
-				wmove(win, cur_y, cur_x - 1);
-				lin_buf[i] = ' ';
+				wmove(win, cur_y, cur_x - 1); // this makes the display side make sense
+				wdelch(win);
+				lin_buf[i] = '\0';
 			}
 			else if(i < last_cur){
 				wdelch(win);
