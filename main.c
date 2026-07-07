@@ -278,10 +278,28 @@ int collect_text(WINDOW *win, char *lin_buf){
 			break;
 		}
 		if(ch == KEY_BACKSPACE || ch == '\b'){
-			if(i > 0) --i;
-			getyx(win, cur_y, cur_x);
-			mvwaddch(win, cur_y, cur_x - 1, ' ');
-			wmove(win, cur_y, cur_x - 1);
+			if(i == last_cur && i > 0){
+				--last_cur;
+				--i;
+				getyx(win, cur_y, cur_x);
+				mvwaddch(win, cur_y, cur_x - 1, ' ');
+				wmove(win, cur_y, cur_x - 1);
+				lin_buf[i] = ' ';
+			}
+			else if(i < last_cur){
+				wdelch(win);
+				getyx(win, cur_y, cur_x);
+				wmove(win, cur_y, cur_x - 1); // this makes the display side make sense
+				int ch_1, offset;
+				offset = i;
+				ch_1 = lin_buf[offset + 1];
+				while (ch_1 != '\0') {
+					lin_buf[offset++] = ch_1;
+					ch_1 = lin_buf[offset + 1];
+				}
+				lin_buf[offset] = '\0';
+				--i;
+			}
 			continue;
 		}
 		if(ch > 255){
@@ -313,12 +331,13 @@ int collect_text(WINDOW *win, char *lin_buf){
 			last_cur = i; // now last_cur is at one ahead of last char entered
 		}
 		else if(i < last_cur){
-			// grab char between 
+			// handle display
+			mvwinsch(win, cur_y, i, ch);
+			// handle buffer
 			int ch_1, ch_2, offset;
 			ch_1 = lin_buf[i]; // previously entered ch at insertion point
 			ch_2 = lin_buf[i + 1]; // char after that one that ch_1 will replace
-			lin_buf[i++] = ch; // insert collected char and vance index, i is at ch_2
-			mvwinsch(win, cur_y, i - 1, ch);
+			lin_buf[i++] = ch; // insert collected char and advance index, i is at ch_2
 			offset = i;// offset equals insertion point of next char which should equal ch_2
 			while(ch_1 != '\0' && offset < LINELEN){
 				lin_buf[offset] = ch_1;// insert ch_1 to next spot and advance offset, which means offset points
