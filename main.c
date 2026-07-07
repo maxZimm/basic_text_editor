@@ -9,15 +9,14 @@
 #define LINELEN 256
 #define NUMLINES 256
 
-char *filebuf[NUMLINES];
 int line_counter = 0;
 
 bool load(char *, char (*)[LINELEN]);
-bool save_file(char *);
+bool save_file(char *, char (*)[LINELEN]);
 int command_input(PANEL *);
 void insert_input(PANEL *, char (*)[LINELEN]);
 void edit_input(PANEL *, int, int, char **);
-void print_main(PANEL *);
+void print_main(PANEL *, char (*)[LINELEN]);
 void p_refresh(void);
 void get_file_name(PANEL *, char *);
 int collect_text(WINDOW *, char *);
@@ -27,7 +26,7 @@ int main(int argc, char *argv[]){
 	char *file_name;
 	bool file_loaded = false;
 
-	char (*store)[LINELEN] = malloc(sizeof(*store) * NUMLINES);
+	char (*store)[LINELEN] = malloc(sizeof(*store) * NUMLINES); // cannot make it a global bc malloc
 	
 	if(argc > 1){
 		file_name = *(++argv);
@@ -61,7 +60,7 @@ int main(int argc, char *argv[]){
 	int cur_y, cur_x;
 
 	if(file_loaded){
-		print_main(main_p);
+		print_main(main_p, store);
 	}
 	while (1) {
 		int ch = wgetch(main);
@@ -104,21 +103,21 @@ int main(int argc, char *argv[]){
 
 	endwin();
 	if(!file_loaded){
-		save_file(save_name);
+		save_file(save_name, store);
 	}
 	else{
-		save_file(file_name);
+		save_file(file_name, store);
 	}
 	free(store);
 	return 0;
 }
 
-void print_main(PANEL *man_p){
+void print_main(PANEL *man_p, char (*store)[LINELEN]){
 	WINDOW *main = panel_window(man_p);
 	wclear(main);
 	wmove(main, 0, 0);
 	for(int i = 0; i < line_counter; i++){
-		wprintw(main, "%s", filebuf[i]);
+		wprintw(main, "%s", store[i]);
 	}
 
 }
@@ -169,10 +168,7 @@ void insert_input(PANEL *main_p, char (*store)[LINELEN]){
 	while (esc < 1) {
 		esc = collect_text(main, line_buf);
 		if(esc < 2){
-		strcpy(store[line_counter], line_buf);
-		filebuf[line_counter] = store[line_counter];
-		//(*store)+= LINELEN;
-		line_counter++;
+		strcpy(store[line_counter++], line_buf);
 		}
 	}
 }
@@ -183,18 +179,14 @@ bool load(char *file_name, char (*store)[LINELEN]){
 	if(fp == NULL){
 		return false;
 	}
-	//char line_buff[LINELEN];
-	while (fgets(store[line_counter], LINELEN, fp)) {
-		//strcpy(store[line_counter], line_buff);
-		filebuf[line_counter] = store[line_counter];
-		//(*store)+= LINELEN;
-		line_counter++;
-	}
+	while (fgets(store[line_counter++], LINELEN, fp))
+		;
+	
 	fclose(fp);
 	return true;
 }
 
-bool save_file(char *file_name){
+bool save_file(char *file_name, char (*store)[LINELEN]){
 	FILE *fp;
 	fp = fopen(file_name, "w");
 	if(fp == NULL){
@@ -203,7 +195,7 @@ bool save_file(char *file_name){
 	}
 	int i = 0;
 	while (i < line_counter) {
-		fputs(filebuf[i++], fp);
+		fputs(store[i++], fp);
 	}
 	fclose(fp);
 	return true;
