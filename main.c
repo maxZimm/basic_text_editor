@@ -12,10 +12,10 @@
 char *filebuf[NUMLINES];
 int line_counter = 0;
 
-bool load(char *, char **);
+bool load(char *, char (*)[LINELEN]);
 bool save_file(char *);
 int command_input(PANEL *);
-void insert_input(PANEL *, char **);
+void insert_input(PANEL *, char (*)[LINELEN]);
 void edit_input(PANEL *, int, int, char **);
 void print_main(PANEL *);
 void p_refresh(void);
@@ -27,8 +27,7 @@ int main(int argc, char *argv[]){
 	char *file_name;
 	bool file_loaded = false;
 
-	char (*store)[256] = malloc(sizeof(char[LINELEN]) * NUMLINES);
-	//char *store_cur = store;
+	char (*store)[LINELEN] = malloc(sizeof(*store) * NUMLINES);
 	
 	if(argc > 1){
 		file_name = *(++argv);
@@ -76,7 +75,7 @@ int main(int argc, char *argv[]){
 		}
 		if(ch == 'i'){
 			// implement insert mode function
-			insert_input(main_p, &store_cur);
+			insert_input(main_p, store);
 		}
 		getyx(main, cur_y, cur_x);
 		switch (ch) {
@@ -157,7 +156,7 @@ int command_input(PANEL *cmd_p){
 	return 0;
 }
 
-void insert_input(PANEL *main_p, char **store_cur){
+void insert_input(PANEL *main_p, char (*store)[LINELEN]){
 	WINDOW *main = panel_window(main_p);
 	int cur_y, cur_x, esc;
 	//int , ch, i;
@@ -170,24 +169,25 @@ void insert_input(PANEL *main_p, char **store_cur){
 	while (esc < 1) {
 		esc = collect_text(main, line_buf);
 		if(esc < 2){
-		strcpy(*store_cur, line_buf);
-		filebuf[line_counter++] = *store_cur;
-		(*store_cur)+= LINELEN;
+		strcpy(store[line_counter], line_buf);
+		filebuf[line_counter] = store[line_counter];
+		//(*store)+= LINELEN;
+		line_counter++;
 		}
 	}
 }
 
-bool load(char *file_name, char **store_cur){
+bool load(char *file_name, char (*store)[LINELEN]){
 
 	FILE *fp = fopen(file_name, "r");
 	if(fp == NULL){
 		return false;
 	}
-	char line_buff[LINELEN];
-	while (fgets(line_buff, LINELEN, fp)) {
-		strcpy(*store_cur, line_buff);
-		filebuf[line_counter] = *store_cur;
-		(*store_cur)+= LINELEN;
+	//char line_buff[LINELEN];
+	while (fgets(store[line_counter], LINELEN, fp)) {
+		//strcpy(store[line_counter], line_buff);
+		filebuf[line_counter] = store[line_counter];
+		//(*store)+= LINELEN;
 		line_counter++;
 	}
 	fclose(fp);
