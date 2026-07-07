@@ -27,12 +27,12 @@ int main(int argc, char *argv[]){
 	char *file_name;
 	bool file_loaded = false;
 
-	char *store = malloc(sizeof(char[LINELEN]) * NUMLINES);
-	char *store_cur = store;
+	char (*store)[256] = malloc(sizeof(char[LINELEN]) * NUMLINES);
+	//char *store_cur = store;
 	
 	if(argc > 1){
 		file_name = *(++argv);
-		file_loaded = load(file_name, &store_cur);
+		file_loaded = load(file_name, store);
 	}
 
 	// Setup ncurses
