@@ -126,7 +126,7 @@ int command_input(PANEL *cmd_p){
 	show_panel(cmd_p);
 	WINDOW *cmd = panel_window(cmd_p);
 	wclear(cmd);
-	mvwaddch(cmd, 0, 1, ':');
+	mvwaddch(cmd, 0, 0, ':');
 	p_refresh();
 
 	int ch, prev;
