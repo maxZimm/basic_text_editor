@@ -168,16 +168,16 @@ void insert_input(PANEL *main_p, char (*store)[LINELEN], int cur_y, int cur_x){
 	esc = 0;
 	//getyx(main, cur_y, cur_x);
 	while (esc < 1) {
-	if(cur_y > line_counter){
-		while (line_counter < cur_y) {
-			strcpy(store[line_counter++], "\n"); // populate blank lines inbetween with new line
+		if(cur_y > line_counter){
+			while (line_counter < cur_y) {
+				strcpy(store[line_counter++], "\n"); // populate blank lines inbetween with new line
+			}
+			cur_x = 0;
+			wmove(main, cur_y, cur_x); // move to start of line so we don't have to prepend spaces, might change later
 		}
-		cur_x = 0;
-		wmove(main, cur_y, cur_x); // move to start of line so we don't have to prepend spaces, might change later
-	}
-	if(cur_y < line_counter){
-		strcpy(line_buf, store[cur_y]); // preload text into buffer
-	}
+		if(cur_y < line_counter){
+			strcpy(line_buf, store[cur_y]); // preload text into buffer
+		}
 		esc = collect_text(main, line_buf, cur_y, cur_x);
 		if(esc < 2 && cur_y == line_counter){
 			strcpy(store[line_counter++], line_buf);
