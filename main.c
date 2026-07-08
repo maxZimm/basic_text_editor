@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <curses.h>
 #include <panel.h>
 #include <ncurses.h>
@@ -14,15 +15,19 @@ int line_counter = 0;
 bool load(char *, char (*)[LINELEN]);
 bool save_file(char *, char (*)[LINELEN]);
 int command_input(PANEL *);
-void insert_input(PANEL *, char (*)[LINELEN]);
+void insert_input(PANEL *, char (*)[LINELEN], int, int);
 void edit_input(PANEL *, int, int, char **);
 void print_main(PANEL *, char (*)[LINELEN]);
 void p_refresh(void);
 void get_file_name(PANEL *, char *);
-int collect_text(WINDOW *, char *);
+int collect_text(WINDOW *, char *, int, int);
 
 int main(int argc, char *argv[]){
 
+	// int gdb = 1; // for debugging
+	//  while (gdb) {
+	// 	// enter new value in gdb
+	// }
 	char *file_name;
 	bool file_loaded = false;
 
@@ -74,7 +79,8 @@ int main(int argc, char *argv[]){
 		}
 		if(ch == 'i'){
 			// implement insert mode function
-			insert_input(main_p, store);
+			getyx(main, cur_y, cur_x);
+			insert_input(main_p, store, cur_y, cur_x);
 		}
 		getyx(main, cur_y, cur_x);
 		switch (ch) {
@@ -155,21 +161,31 @@ int command_input(PANEL *cmd_p){
 	return 0;
 }
 
-void insert_input(PANEL *main_p, char (*store)[LINELEN]){
+void insert_input(PANEL *main_p, char (*store)[LINELEN], int cur_y, int cur_x){
 	WINDOW *main = panel_window(main_p);
-	int cur_y, cur_x, esc;
-	//int , ch, i;
+	int esc;
 	char line_buf[LINELEN];
-	//i =
 	esc = 0;
-	getyx(main, cur_y, cur_x);
-	cur_x = 0;
-	wmove(main, cur_y, cur_x);
+	//getyx(main, cur_y, cur_x);
 	while (esc < 1) {
-		esc = collect_text(main, line_buf);
-		if(esc < 2){
-		strcpy(store[line_counter++], line_buf);
+	if(cur_y > line_counter){
+		while (line_counter < cur_y) {
+			strcpy(store[line_counter++], "\n"); // populate blank lines inbetween with new line
 		}
+		cur_x = 0;
+		wmove(main, cur_y, cur_x); // move to start of line so we don't have to prepend spaces, might change later
+	}
+	if(cur_y < line_counter){
+		strcpy(line_buf, store[cur_y]); // preload text into buffer
+	}
+		esc = collect_text(main, line_buf, cur_y, cur_x);
+		if(esc < 2 && cur_y == line_counter){
+			strcpy(store[line_counter++], line_buf);
+		}
+		else if(esc < 2 && cur_y < line_counter){
+			strcpy(store[cur_y], line_buf);
+		}
+		getyx(main, cur_y, cur_x);
 	}
 }
 
@@ -239,14 +255,17 @@ void get_file_name(PANEL *cmd_p, char *buff){
 	}
 }
 
-int collect_text(WINDOW *win, char *lin_buf){
-	// Idea to create a cursor for last entered text index
-	// if arrows are used to move ahead or behind the current index that
-	// original spot from before the arrows needs to be recorded
+int collect_text(WINDOW *win, char *lin_buf, int call_y, int call_x){
 	int ch, cur_y, cur_x, i, esc;
 	getyx(win, cur_y, cur_x);
 	i = esc = 0;
 	int last_cur = 0; // should always be the index after the furthest most right char in line buf
+	if(call_y < line_counter){
+		i = call_x;
+		last_cur = strlen(lin_buf) + 1; // strlen does not include null char
+		if(strcmp(lin_buf, "\n") == 0)
+			last_cur = 0;
+	}
 	while (i < LINELEN && last_cur < LINELEN) {
 		ch = wgetch(win);
 		// Characters not selected to store
@@ -258,10 +277,12 @@ int collect_text(WINDOW *win, char *lin_buf){
 				lin_buf[i] = '\0';
 			}
 			else if(i < last_cur){
-				while (lin_buf[i++] != '\0')
+				while (lin_buf[i++] != '\0') // when we match null char we still advance i one more space
 					;
-				lin_buf[i - 1] = '\n';
-				lin_buf[i] = '\0';
+				if(lin_buf[i - 2] != '\n'){// so we need to check 2 spaces behind if i already equal newline
+					lin_buf[i - 1] = '\n'; // if true replace null with new line then add null
+					lin_buf[i] = '\0';
+				}
 				break;
 			}
 			else{
@@ -317,14 +338,10 @@ int collect_text(WINDOW *win, char *lin_buf){
 			continue;
 		}
 		// Add chars to lin_buf
-		if(last_cur == 0 || i == last_cur){
-			lin_buf[i++] = ch;
-			waddch(win, ch);
-			last_cur = i; // now last_cur is at one ahead of last char entered
-		}
-		else if(i < last_cur){
+		if(i < last_cur){
 			// handle display
 			mvwinsch(win, cur_y, i, ch);
+			move(cur_y, i + 1);
 			// handle buffer
 			int ch_1, ch_2, offset;
 			ch_1 = lin_buf[i]; // previously entered ch at insertion point
@@ -348,6 +365,11 @@ int collect_text(WINDOW *win, char *lin_buf){
 			lin_buf[i++] = ch;
 			waddch(win, ch);
 			last_cur = i;
+		}
+		else if(i == last_cur){
+			lin_buf[i++] = ch;
+			waddch(win, ch);
+			last_cur = i; // now last_cur is at one ahead of last char entered
 		}
 		if(ch == '\n'){
 			lin_buf[i] = '\0';
