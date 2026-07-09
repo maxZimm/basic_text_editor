@@ -228,31 +228,26 @@ void get_file_name(PANEL *cmd_p, char *buff){
 	wclear(cmd);
 	waddstr(cmd, ": add file name");
 	p_refresh();
-	wmove(cmd, 0, 2);
-	int ch, i;
-	i = 0;
-	while (i < 256) {
+	wmove(cmd, 0, 1);
+	int i, ch;
+	i = 1;
+	//char line_buff[256];
+	while (i) {
 		ch = wgetch(cmd);
-		if(ch == KEY_BACKSPACE || ch == '\b'){
-			int cur_y, cur_x;
-			getyx(cmd, cur_y, cur_x);
-			mvwaddch(cmd, cur_y, cur_x - 1, ' ');
-			wmove(cmd, cur_y, cur_x - 1);
-			p_refresh();
-			continue;
-		}
-		if(ch > 255){
-			continue;
-		}
-		if(ch == '\n'){
-			buff[i] = '\0';
-			break;
-		}
 		waddch(cmd, ch);
-		buff[i++] =  ch;
-		p_refresh();
-		
+		wclrtoeol(cmd);
+		buff[0] = ch;
+		buff[1] = '\0';
+		i = collect_text(cmd, buff, -1, 1);
 	}
+	int j = 0;
+	while(buff[j] != '\n'){
+		if(buff[j] == ' '){
+			buff[j] = '_';
+		}
+		j++;
+	}
+	buff[j] = '\0';
 }
 
 int collect_text(WINDOW *win, char *lin_buf, int call_y, int call_x){
@@ -262,7 +257,7 @@ int collect_text(WINDOW *win, char *lin_buf, int call_y, int call_x){
 	int last_cur = 0; // should always be the index after the furthest most right char in line buf
 	if(call_y < line_counter){
 		i = call_x;
-		last_cur = strlen(lin_buf) + 1; // strlen does not include null char
+		last_cur = strlen(lin_buf) ; //add back + 1 if causes issues strlen does not include null char
 		if(strcmp(lin_buf, "\n") == 0)
 			last_cur = 0;
 	}
