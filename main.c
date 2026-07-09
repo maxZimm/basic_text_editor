@@ -184,6 +184,7 @@ void insert_input(PANEL *main_p, char (*store)[LINELEN], int cur_y, int cur_x){
 		}
 		else if(esc < 2 && cur_y < line_counter){
 			strcpy(store[cur_y], line_buf);
+			wmove(main, line_counter, 0);
 		}
 		getyx(main, cur_y, cur_x);
 	}
